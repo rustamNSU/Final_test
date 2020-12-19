@@ -11,8 +11,11 @@ public:
     RaiiThread(Function&& fn, Args&&... args) : thr_(fn, args...){}
 
     ~RaiiThread(){
-        thr_.join();
-        std::cout << "Yeeah, baby\n";
+        if (thr_.joinable())
+        {
+            thr_.join();
+            std::cout << "Yeeah, baby\n";
+        }
     }
 };
 
