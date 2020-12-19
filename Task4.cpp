@@ -1,11 +1,29 @@
 #include <iostream>
 #include <thread>
 #include <mutex>
-#include <string>
-#include <utility>
-using namespace std::literals;
+#include <atomic>
 
-std::mutex car_mutex;
+class Spinlock{
+private:
+    std::atomic<bool> lock_ = false;
+
+public:
+    Spinlock() = default;
+    Spinlock(const Spinlock &other) = delete;
+    Spinlock(Spinlock &&other) = delete;
+    Spinlock& operator=(const Spinlock &other) = delete;
+    Spinlock& operator=(Spinlock &&other) = delete;
+
+    void lock(){
+        while(lock_.exchange(true, std::memory_order_acquire));
+    }
+    void unlock() {
+        lock_.store(false, std::memory_order_release);
+    }
+};
+
+Spinlock spinlock;
+int check = 1;
 int LAYERS = 5;
 bool Painting = true;
 
@@ -20,11 +38,10 @@ public:
         {
             if(Painting)
             {
-                car_mutex.lock();
+                std::lock_guard<Spinlock> guard(spinlock);
                 std::cout << std::to_string(layers) << ") " << "Painting car\n";
                 ++layers;
                 Painting = false;
-                car_mutex.unlock();
             }
         }
     }
@@ -46,10 +63,9 @@ public:
         {
             if(!Painting)
             {
-                car_mutex.lock();
+                std::lock_guard<Spinlock> guard(spinlock);
                 std::cout << std::to_string(layers) << ") " << "Drying car\n";
                 ++layers;
-                car_mutex.unlock();
                 Painting = true;
             }
         }
@@ -60,6 +76,7 @@ public:
         }
     }
 };
+
 
 int main()
 {
